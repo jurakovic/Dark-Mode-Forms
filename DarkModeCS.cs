@@ -3,9 +3,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-//using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-
-
 
 namespace BlueMystic
 {
@@ -14,7 +11,6 @@ namespace BlueMystic
 	public class DarkModeCS
 	{
 		#region Win32 API Declarations
-
 
 		public struct DWMCOLORIZATIONcolors
 		{
@@ -181,7 +177,7 @@ namespace BlueMystic
 		public extern static IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, [MarshalAs(UnmanagedType.LPWStr)] string lParam);
 
 
-		[DllImport("DwmApi")] 
+		[DllImport("DwmApi")]
 		public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, int[] attrValue, int attrSize);
 
 		[DllImport("dwmapi.dll")]
@@ -281,14 +277,13 @@ namespace BlueMystic
 
 			//Change the Colors only if its the default ones, this allows the user to set own colors:
 			if (control.BackColor == SystemColors.Control || control.BackColor == SystemColors.Window)
-			{
 				control.GetType().GetProperty("BackColor")?.SetValue(control, OScolors.Control);
-			}
+
 			if (control.ForeColor == SystemColors.ControlText || control.ForeColor == SystemColors.WindowText)
-			{
 				control.GetType().GetProperty("ForeColor")?.SetValue(control, OScolors.TextActive);
-			}
-			control.GetType().GetProperty("BorderStyle")?.SetValue(control, BStyle);
+
+			if (control is not UserControl)
+				control.GetType().GetProperty("BorderStyle")?.SetValue(control, BStyle);
 
 			control.HandleCreated += (object sender, EventArgs e) =>
 			{
@@ -299,6 +294,10 @@ namespace BlueMystic
 				ThemeControl(e.Control);
 			};
 
+			if (control is MdiClient mdi)
+			{
+				control.BackColor = OScolors.AppWorkspace;
+			}
 			if (control is TextBox tb)
 			{
 				//SetRoundBorders(tb, 4, OScolors.SurfaceDark, 1);
@@ -309,12 +308,12 @@ namespace BlueMystic
 				panel.BackColor = OScolors.Surface;
 				panel.BorderStyle = BorderStyle.None;
 
-				if ( !(panel.Parent is TabControl) || !(panel.Parent is TableLayoutPanel))
+				if (!(panel.Parent is TabControl) || !(panel.Parent is TableLayoutPanel))
 				{
 					if (RoundedPanels)
 					{
 						SetRoundBorders(panel, 6, OScolors.SurfaceDark, 1);
-					}					
+					}
 				}
 			}
 			if (control is GroupBox group)
@@ -395,7 +394,7 @@ namespace BlueMystic
 						//e.DrawDefault = true;
 						//e.DrawBackground();
 						//e.DrawText();
-						
+
 						using (SolidBrush backBrush = new SolidBrush(OScolors.ControlLight))
 						{
 							using (SolidBrush foreBrush = new SolidBrush(OScolors.TextActive))
@@ -408,11 +407,12 @@ namespace BlueMystic
 								}
 							}
 						}
-						
+
 					};
 					lView.DrawItem += (sender, e) => { e.DrawDefault = true; };
-					lView.DrawSubItem += (sender, e) => { 
-						
+					lView.DrawSubItem += (sender, e) =>
+					{
+
 						e.DrawDefault = true;
 						/*
 						IntPtr headerControl = GetHeaderControl(lView);
@@ -432,7 +432,7 @@ namespace BlueMystic
 
 						ReleaseDC(headerControl, hdc);
 						*/
-					};					
+					};
 				}
 			}
 			if (control is Button button)
@@ -471,10 +471,7 @@ namespace BlueMystic
 			if (control is MenuStrip menu)
 			{
 				menu.RenderMode = ToolStripRenderMode.Professional;
-				menu.Renderer = new MyRenderer(new CustomColorTable(OScolors), ColorizeIcons)
-				{
-					MyColors = OScolors
-				};
+				menu.Renderer = new MyRenderer(new CustomColorTable(OScolors), ColorizeIcons) { MyColors = OScolors };
 			}
 			if (control is ToolStrip toolBar)
 			{
@@ -564,7 +561,6 @@ namespace BlueMystic
 			throw new NotImplementedException();
 		}
 
-
 		/// <summary>Returns Windows Color Mode for Applications.
 		/// <para>0=dark theme, 1=light theme</para>
 		/// </summary>
@@ -620,6 +616,7 @@ namespace BlueMystic
 			bool IsDarkMode = (GetWindowsColorMode() <= 0); //<- O: DarkMode, 1: LightMode
 			if (IsDarkMode)
 			{
+				_ret.AppWorkspace = Color.FromArgb(32, 32, 32);   //<- Negro Claro
 				_ret.Background = Color.FromArgb(32, 32, 32);   //<- Negro Claro
 				_ret.BackgroundDark = Color.FromArgb(18, 18, 18);
 				_ret.BackgroundLight = ControlPaint.Light(_ret.Background);
@@ -637,7 +634,7 @@ namespace BlueMystic
 				_ret.ControlLight = Color.FromArgb(67, 67, 67);
 
 				_ret.Primary = Color.FromArgb(3, 218, 198);   //<- Verde Pastel
-				_ret.Secondary = Color.MediumSlateBlue;         //<- Magenta Claro				
+				_ret.Secondary = Color.MediumSlateBlue;         //<- Magenta Claro
 
 				//Apply Window's Dark Mode to the Form's Title bar
 				if (Window != null)
@@ -652,7 +649,7 @@ namespace BlueMystic
 
 			return _ret;
 		}
-		
+
 		/// <summary>Apply Round Corners to the indicated Control or Form.</summary>
 		/// <param name="_Control">the one who will have rounded Corners. Set BorderStyle = None.</param>
 		/// <param name="Radius">Radious for the Corners</param>
@@ -756,6 +753,7 @@ namespace BlueMystic
 			}
 			return bmp2;
 		}
+
 		public static Image ChangeToColor(Image bmp, Color c) => (Image)ChangeToColor((Bitmap)bmp, c);
 
 		#endregion
@@ -766,7 +764,7 @@ namespace BlueMystic
 		/// <param name="control"></param>
 		private static void ApplySystemDarkTheme(Control control = null)
 		{
-			/* 			    
+			/*
 				DWMWA_USE_IMMERSIVE_DARK_MODE:   https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
 
 				Use with DwmSetWindowAttribute. Allows the window frame for this window to be drawn in dark mode colors when the dark mode system setting is enabled. 
@@ -777,7 +775,7 @@ namespace BlueMystic
 
 				SetWindowTheme:     https://learn.microsoft.com/en-us/windows/win32/api/uxtheme/nf-uxtheme-setwindowtheme
 				Causes a window to use a different set of visual style information than its class normally uses.
-			 */
+			*/
 			int[] DarkModeOn = new[] { 0x01 }; //<- 1=True, 0=False
 
 			SetWindowTheme(control.Handle, "DarkMode_Explorer", null);
@@ -794,10 +792,7 @@ namespace BlueMystic
 
 		private static bool IsWindows10orGreater()
 		{
-			if (WindowsVersion() >= 10)
-				return true;
-			else
-				return false;
+			return (WindowsVersion() >= 10);
 		}
 
 		private static int WindowsVersion()
@@ -845,10 +840,13 @@ namespace BlueMystic
 		#endregion
 	}
 
+	#region OSThemeColors
+
 	/// <summary>Windows 10+ System Colors for Clear Color Mode.</summary>
 	public class OSThemeColors
 	{
-		public OSThemeColors() { }
+		/// <summary>For the MDI AppWorkspace</summary>
+		public System.Drawing.Color AppWorkspace { get; set; } = SystemColors.AppWorkspace;
 
 		/// <summary>For the very back of the Window</summary>
 		public System.Drawing.Color Background { get; set; } = SystemColors.Control;
@@ -893,6 +891,10 @@ namespace BlueMystic
 		public System.Drawing.Color SecondaryDark { get { return ControlPaint.Dark(Secondary); } }
 		public System.Drawing.Color SecondaryLight { get { return ControlPaint.Light(Secondary); } }
 	}
+
+	#endregion
+
+	#region MyRenderer
 
 	/* Custom Renderers for Menus and ToolBars */
 	public class MyRenderer : ToolStripProfessionalRenderer
@@ -946,6 +948,7 @@ namespace BlueMystic
 		// Background of the whole ToolBar Or MenuBar:
 		protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
 		{
+			// menu, menu items
 			e.ToolStrip.BackColor = MyColors.Background;
 			base.OnRenderToolStripBackground(e);
 		}
@@ -1045,7 +1048,6 @@ namespace BlueMystic
 				e.Graphics.FillRectangle(b, bounds);
 			}
 
-
 			//3. Draws the Chevron:
 			#region Chevron
 
@@ -1143,27 +1145,29 @@ namespace BlueMystic
 			Color gradientEnd = MyColors.Background; // Color.FromArgb(125, 165, 224);
 
 			bool DrawIt = false;
-			var _menu = e.Item as ToolStripItem;
-			if (_menu.Pressed)
+
+			if (e.Item.Pressed)
 			{
-				gradientBegin = MyColors.Control; // Color.FromArgb(254, 128, 62);
-				gradientEnd = MyColors.Control; // Color.FromArgb(255, 223, 154);
+				// clicked menu item
+				gradientBegin = MyColors.Surface;//Color.FromArgb(255, 46, 46, 46);
+				gradientEnd = MyColors.Surface; //Color.FromArgb(255, 46, 46, 46);
 				DrawIt = true;
 			}
-			else if (_menu.Selected)
+			else if (e.Item.Selected)
 			{
-				gradientBegin = MyColors.Accent;// Color.FromArgb(255, 255, 222);
-				gradientEnd = MyColors.Accent; // Color.FromArgb(255, 203, 136);
+				// hovered menu item
+				gradientBegin = MyColors.Control;//Color.FromArgb(255, 61, 61, 61);
+				gradientEnd = MyColors.Control; //Color.FromArgb(255, 61, 61, 61);
 				DrawIt = true;
 			}
 
 			if (DrawIt)
 			{
 				using (Brush b = new LinearGradientBrush(
-				bounds,
-				gradientBegin,
-				gradientEnd,
-				LinearGradientMode.Vertical))
+					bounds,
+					gradientBegin,
+					gradientEnd,
+					LinearGradientMode.Vertical))
 				{
 					g.FillRectangle(b, bounds);
 				}
@@ -1187,13 +1191,14 @@ namespace BlueMystic
 					e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
 					e.Graphics.DrawImage(adjustedImage, e.ImageRectangle);
 				}
-
 			}
 		}
-
-		
-
 	}
+
+	#endregion
+
+	#region CustomColorTable
+
 	public class CustomColorTable : ProfessionalColorTable
 	{
 		public OSThemeColors Colors { get; set; }
@@ -1204,17 +1209,16 @@ namespace BlueMystic
 			base.UseSystemColors = false;
 		}
 
-		public override Color ImageMarginGradientBegin
-		{
-			get { return Colors.Control; }
-		}
-		public override Color ImageMarginGradientMiddle
-		{
-			get { return Colors.Control; }
-		}
-		public override Color ImageMarginGradientEnd
-		{
-			get { return Colors.Control; }
-		}
+		// menu item icon area (left side)
+		public override Color ImageMarginGradientBegin => Colors.Background;
+		public override Color ImageMarginGradientMiddle => Colors.Background;
+		public override Color ImageMarginGradientEnd => Colors.Background;
+
+		// menu item checkbox
+		public override Color CheckBackground => Colors.Background;
+		public override Color CheckSelectedBackground => Colors.Control;
+		public override Color CheckPressedBackground => Colors.Surface;
 	}
+
+	#endregion
 }
