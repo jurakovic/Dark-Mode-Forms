@@ -156,7 +156,6 @@ namespace BlueMystic
 			DWMWCP_ROUNDSMALL = 3
 		}
 
-
 		[Serializable, StructLayout(LayoutKind.Sequential)]
 		public struct RECT
 		{
@@ -175,7 +174,6 @@ namespace BlueMystic
 
 		[DllImport("user32.dll", CharSet = CharSet.Auto)]
 		public extern static IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, [MarshalAs(UnmanagedType.LPWStr)] string lParam);
-
 
 		[DllImport("DwmApi")]
 		public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, int[] attrValue, int attrSize);
@@ -246,10 +244,19 @@ namespace BlueMystic
 			ColorizeIcons = _ColorizeIcons;
 			RoundedPanels = _RoundedPanels;
 			IsDarkMode = GetWindowsColorMode() <= 0 ? true : false;
-			OScolors = GetSystemColors(OwnerForm);
+			OScolors = GetSystemColors();
 
 			if (IsDarkMode && OScolors != null)
 			{
+				//Apply Window's Dark Mode to the Form's Title bar
+				if (OwnerForm != null)
+				{
+					ApplySystemDarkTheme(OwnerForm);
+
+					OwnerForm.BackColor = OScolors.Background;
+					OwnerForm.ForeColor = OScolors.TextInactive;
+				}
+
 				if (OwnerForm != null && OwnerForm.Controls != null)
 				{
 					foreach (Control _control in OwnerForm.Controls)
@@ -272,8 +279,8 @@ namespace BlueMystic
 		/// <param name="control">Can be a Form or any Winforms Control.</param>
 		public void ThemeControl(Control control)
 		{
-			BorderStyle BStyle = (IsDarkMode ? BorderStyle.FixedSingle : BorderStyle.Fixed3D);
-			FlatStyle FStyle = (IsDarkMode ? FlatStyle.Flat : FlatStyle.Standard);
+			BorderStyle BStyle = IsDarkMode ? BorderStyle.FixedSingle : BorderStyle.Fixed3D;
+			FlatStyle FStyle = IsDarkMode ? FlatStyle.Flat : FlatStyle.Standard;
 
 			//Change the Colors only if its the default ones, this allows the user to set own colors:
 			if (control.BackColor == SystemColors.Control || control.BackColor == SystemColors.Window)
@@ -407,12 +414,10 @@ namespace BlueMystic
 								}
 							}
 						}
-
 					};
 					lView.DrawItem += (sender, e) => { e.DrawDefault = true; };
 					lView.DrawSubItem += (sender, e) =>
 					{
-
 						e.DrawDefault = true;
 						/*
 						IntPtr headerControl = GetHeaderControl(lView);
@@ -609,7 +614,7 @@ namespace BlueMystic
 		/// <summary>Returns Windows's System Colors for UI components following Google Material Design concepts.</summary>
 		/// <param name="Window">[OPTIONAL] Applies DarkMode (if set) to this Window Title and Background.</param>
 		/// <returns>List of Colors:  Background, OnBackground, Surface, OnSurface, Primary, OnPrimary, Secondary, OnSecondary</returns>
-		public static OSThemeColors GetSystemColors(Form Window = null)
+		public static OSThemeColors GetSystemColors()
 		{
 			OSThemeColors _ret = new OSThemeColors();
 
@@ -635,16 +640,6 @@ namespace BlueMystic
 
 				_ret.Primary = Color.FromArgb(3, 218, 198);   //<- Verde Pastel
 				_ret.Secondary = Color.MediumSlateBlue;         //<- Magenta Claro
-
-				//Apply Window's Dark Mode to the Form's Title bar
-				if (Window != null)
-				{
-					//SetWin32ApiTheme(Window);
-					ApplySystemDarkTheme(Window);
-
-					Window.BackColor = _ret.Background;
-					Window.ForeColor = _ret.TextInactive;
-				}
 			}
 
 			return _ret;
@@ -719,7 +714,6 @@ namespace BlueMystic
 			catch { throw; }
 		}
 
-
 		/// <summary>Colorea una imagen usando una Matrix de Color.</summary>
 		/// <param name="bmp">Imagen a Colorear</param>
 		/// <param name="c">Color a Utilizar</param>
@@ -792,7 +786,7 @@ namespace BlueMystic
 
 		private static bool IsWindows10orGreater()
 		{
-			return (WindowsVersion() >= 10);
+			return WindowsVersion() >= 10;
 		}
 
 		private static int WindowsVersion()
@@ -1023,8 +1017,6 @@ namespace BlueMystic
 			Rectangle bounds = new Rectangle(Point.Empty, e.Item.Size);
 			Color gradientBegin = MyColors.Background; // Color.FromArgb(203, 225, 252);
 			Color gradientEnd = MyColors.Background;
-
-			Pen BordersPencil = new Pen(MyColors.Background);
 
 			//1. Determine the colors to use:
 			if (e.Item.Pressed)
